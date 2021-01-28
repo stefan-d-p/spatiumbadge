@@ -8,11 +8,30 @@ ACTION spatiumbadge::signup(const name& issuer, const std::string& org_name,
    check(url.length() > 0, "You must provide an url");
 }
 
-ACTION spatiumbadge::createclass(const name& issuer, const std::string& name,
+ACTION spatiumbadge::createclass(const name& issuer, const name& badgeclass_name, const std::string& name,
                                  const std::string& description, const std::string& cid_image,
                                  const std::string& cid_meta) {
 
    require_auth(issuer);
+   check(name.length() > 0, "you must provide a name for the new class");
+   check(name.length() < 256, "name must not exceed 256 characters");
+   check(description.length() > 0,"you must provide a description");
+   check(description.length() < 512,"description must not exceed 512 characters");
+
+   badgeclasses_t badgeclasses(get_self(), issuer.value);
+   auto bcitr = badgeclasses.find(badgeclass_name.value);
+   check(bcitr == badgeclasses.end(),"a badgeclass with that name already exists");
+
+   bcitr = badgeclasses.emplace(issuer, [&](auto& _badgeclass) {
+      _badgeclass.badgeclass_name = badgeclass_name;
+      _badgeclass.name = name;
+      _badgeclass.description = description;
+      _badgeclass.cid_badge_image = cid_image;
+      _badgeclass.cid_badge_meta = cid_meta;
+   });
+
+   require_recipient(issuer);
+
 }
 
 ACTION spatiumbadge::issue(const name& issuer, const name& owner, 
@@ -22,24 +41,26 @@ ACTION spatiumbadge::issue(const name& issuer, const name& owner,
    check(is_account(owner),"The owner is not a valid account");
    check(memo.length() < 256, "descriptive memo must be less thank 256 characters");
 
-   badgeclasses_t badgeclasses = badgeclasses_t(get_self(),get_self().value);
+   badgeclasses_t badgeclasses = badgeclasses_t(get_self(),issuer.value);
    
-   badgeclasses.get(badgeclass.value, "Badgeclass does not exist");
+   auto bcitr = badgeclasses.require_find(badgeclass.value,"Badgeclass does not exist");
 
    uint64_t next_proposal_id = proposals.available_primary_key();
 
-   proposals.emplace(issuer, [&](auto& _proposal) {
+   auto propitr = proposals.emplace(issuer, [&](auto& _proposal) {
       _proposal.proposal_id = next_proposal_id;
       _proposal.issuer = issuer;
       _proposal.owner = owner;
       _proposal.badgeclass = badgeclass;
    });
 
+   receipt_propose_s receipt(*propitr,*bcitr);
+
    action(
       permission_level{get_self(),"active"_n},
       get_self(),
-      "logprop"_n,
-      make_tuple(next_proposal_id,issuer,owner,badgeclass,memo)
+      "receiptissue"_n,
+      receipt
    ).send();
   
 
@@ -65,12 +86,9 @@ ACTION spatiumbadge::accept(uint64_t& proposal_id) {
 
 }
 
-ACTION spatiumbadge::logissue(const uint64_t& proposal_id, const name& issuer, const name& owner,
-                              const name& badgeclass, const std::string &memo) {
-
+ACTION spatiumbadge::receiptissue(receipt_propose_s& receipt) {
    require_auth(get_self());
-   require_recipient(issuer);
-   require_recipient(owner);
-
+   require_recipient(receipt.issuer);
+   require_recipient(receipt.issuer);
 }
 

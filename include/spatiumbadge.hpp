@@ -11,7 +11,7 @@ CONTRACT spatiumbadge : public contract {
       ACTION signup(const name& issuer, const std::string& org_name,
                     const std::string& url, const std::string& cid_image);
       
-      ACTION createclass(const name& issuer, const std::string& name,
+      ACTION createclass(const name& issuer, const name& badgeclass_name, const std::string& name,
                          const std::string& description,
                          const std::string& cid_image, const std::string& cid_meta);
       
@@ -20,8 +20,7 @@ CONTRACT spatiumbadge : public contract {
 
       ACTION accept(uint64_t& proposal_id);
       
-      ACTION logissue(const uint64_t& proposal_id, const name& issuer, const name& owner,
-                      const name& badgeclass, const std::string &memo);
+      
 
    private:
       
@@ -99,4 +98,28 @@ CONTRACT spatiumbadge : public contract {
 
       profiles_t        profiles = profiles_t(get_self(), get_self().value);
       proposals_t       proposals = proposals_t(get_self(), get_self().value);
+
+   public:
+
+      struct receipt_propose_s {
+         uint64_t                proposal_id;
+         name                    issuer;
+         name                    owner;
+         std::string             name;
+         std::string             description;
+
+         receipt_propose_s(const proposals_s& proposal, const badgeclasses_s& badgeclass) {
+            proposal_id = proposal.proposal_id;
+            issuer = proposal.issuer;
+            owner = proposal.owner;
+            name = badgeclass.name;
+            description = badgeclass.description;
+         }
+
+         receipt_propose_s() { }
+      };
+
+      EOSLIB_SERIALIZE(receipt_propose_s, (proposal_id)(issuer)(owner)(name)(description));
+
+      ACTION receiptissue(receipt_propose_s& receipt);
 };
