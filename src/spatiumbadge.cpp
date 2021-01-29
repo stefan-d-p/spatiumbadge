@@ -13,6 +13,7 @@ ACTION spatiumbadge::createclass(const name& issuer, const name& badgeclass_name
                                  const std::string& cid_meta) {
 
    require_auth(issuer);
+   is_valid_issuer(issuer);
    check(name.length() > 0, "you must provide a name for the new class");
    check(name.length() < 256, "name must not exceed 256 characters");
    check(description.length() > 0,"you must provide a description");
@@ -38,6 +39,7 @@ ACTION spatiumbadge::issue(const name& issuer, const name& owner,
                            const name& badgeclass, const std::string& memo) {
 
    require_auth(issuer);
+   is_valid_issuer(issuer);
    check(is_account(owner),"The owner is not a valid account");
    check(memo.length() < 256, "descriptive memo must be less thank 256 characters");
 
@@ -84,6 +86,15 @@ ACTION spatiumbadge::accept(uint64_t& proposal_id) {
 
    // TODO: Send receipt to issuer and owner
 
+}
+
+ACTION spatiumbadge::decline(uint64_t& proposal_id) {
+   auto prop_itr = proposals.require_find(proposal_id,"badge proposal does not exist");
+   require_auth(prop_itr->owner);
+
+   proposals.erase(prop_itr);
+
+   // TODO: Send receipt to issuer and owner
 }
 
 ACTION spatiumbadge::receiptissue(receipt_propose_s& receipt) {

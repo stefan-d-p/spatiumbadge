@@ -19,6 +19,8 @@ CONTRACT spatiumbadge : public contract {
                    const name& badgeclass, const std::string& memo);
 
       ACTION accept(uint64_t& proposal_id);
+
+      ACTION decline(uint64_t& proposal_id);
       
       
 
@@ -98,6 +100,10 @@ CONTRACT spatiumbadge : public contract {
 
       profiles_t        profiles = profiles_t(get_self(), get_self().value);
       proposals_t       proposals = proposals_t(get_self(), get_self().value);
+
+      void is_valid_issuer(const name& issuer) {
+         profiles.require_find(issuer.value,"account is not registered with contract. signup first.");
+      }
 
    public:
 
